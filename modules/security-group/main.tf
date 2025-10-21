@@ -1,3 +1,11 @@
+# Notes:
+# - 5 Security Groups are needed:
+#   - For the ALB of the Web Tier
+#   - For the ALB of the App Tier
+#   - For the Web Tier (the ASG)
+#   - For the App Tier (the ASG)
+#   - For the Data Tier (attached to the RDS deployment)
+
 # Security Group for the internet-facing ALB
 resource "aws_security_group" "web_alb_sg" {
   name        = "${var.module_prefix}-web-alb-sg"

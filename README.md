@@ -1,6 +1,20 @@
-# AWS 2-tier Architeccture using Terraform
+# AWS 3-tier Architeccture using Terraform
 
 ## Overall description
+
+This is a TF project to provision the infra for a 3-tier architecture/applicaction:
+
+- Web Tier: internet-facing (EC2s behind an ALB)
+- App Tier (backend) (EC2s behind internal ALB)
+- Data Tier: RDS database
+
+To meet the HA (High Availability) requirement all tiers are deployed in two AZs
+
+[![alt text](image.png)](https://github.com/aws-samples/aws-three-tier-web-architecture-workshop/raw/main/application-code/web-tier/src/assets/3TierArch.png)
+Notes:
+
+- To reduce costs a simple RDS was used instead of Aurora
+- A Route53 Record was placed in front of the ALB for the Web Tier
 
 ### Internet-facing tier (web applicaction)
 
@@ -8,22 +22,23 @@
   - Domain registration:
     - Manual provision
     - Includes a Public Hosted Zone
-  - Alias record:
+  - A Alias record:
     - Points to the Internet Gateway (which is in front of the ALB)
     - Free of cost
-    - Can't set TTL (CNAME can)
-- AMC - AWS Certificate Manager - Puclic certificate:
+- ACM - AWS Certificate Manager - Puclic certificate:
   - Manual provision
-  - Pending approval
+  - Pending approval (not included in the current state -> HTTP traffic)
 - Internet Gateway:
-  - between R53 and ALB
   - At VPC level
-- Application Load Balancer:
-  - HTTPS listener (if SSL/TLS cert is available):
+  - Provides internet accesss to the Web Tier
+- Application Load Balancer (x2):
+  - One for the Web Tier and one in between the Web and App Tier
+  - HTTP listener:
     - Points to the target group
-    - Scurity policy: leave default
-    - Load cert from ACM
-- Auto Scaling Group:
+  - HTTPS listener (future implementation when ACM Cert is available):
+    - Points to the target group
+- Auto Scaling Group (x2):
+  - One for the Web Tier and one for the App Tier
   - Launch Template for EC2s
   - Deploy in two AZs
   - 1 EC2 per AZ:
@@ -42,15 +57,17 @@
 
 Notes:
 
-- Each EC2 (4) has a Security Group and subnet (all private)
-- Everything is inside a private VPC exept for the R53 and ACM resources
-
-## List of resources
-
-- ASG:
-  - Target tracking policy: CPU utiization 66%
-- Launch Template
-- Target group
+- 6 Subnets needed:
+  - 2 Public Subnets for the Web Tier (internet-facing EC2s)
+  - 2 Private Subnets for App Tier (pri-sub-web-a, pri-sub-web-b)
+  - 2 Private Subnets for Data Tier (pri-sub-data-a, pri-sub-data-b)
+- Everything is inside a VPC exept for the R53 and ACM resources
+- 5 Security Groups are needed:
+  - For the ALB of the Web Tier
+  - For the ALB of the App Tier
+  - For the Web Tier (the ASG)
+  - For the App Tier (the ASG)
+  - For the Data Tier (attached to the RDS deployment)
 
 ## Naming conventions
 
