@@ -47,11 +47,19 @@ resource "aws_security_group" "internal_alb_sg" {
   vpc_id      = var.vpc_id
 
   ingress {
-    description = "http access"
+    description = "enable http access from web tier sg"
     from_port   = 80
     to_port     = 80
     protocol    = "tcp"
-    cidr_blocks = var.internal_alb_ingress_cidrs
+    security_groups = [aws_security_group.web_alb_sg.id]
+  }
+
+  egress {
+    description = "enable http access to app tier sg"
+    from_port       = 80
+    to_port         = 80
+    protocol        = "tcp"
+    security_groups = [aws_security_group.app_sg.id]
   }
 
   tags = {
@@ -99,14 +107,6 @@ resource "aws_security_group" "app_sg" {
     security_groups = [aws_security_group.web_alb_sg.id]
   }
 
-  egress {
-    description = "Enable outbound comm with MySQL DB"
-    from_port   = 3306
-    to_port     = 3306
-    protocol    = "tcp"
-    cidr_blocks = var.app_sg_egress_cidrs
-  }
-
   tags = {
     Name = "${var.module_prefix}-app_sg"
   }
@@ -118,24 +118,40 @@ resource "aws_security_group" "db_sg" {
   description = "enable mysql access on port 3306 from web-sg"
   vpc_id      = var.vpc_id
 
-  ingress {
-    description     = "mysql access"
-    from_port       = 3306
-    to_port         = 3306
-    protocol        = "tcp"
-    security_groups = [aws_security_group.app_sg.id]
-  }
-
-  egress {
-    from_port   = 0
-    to_port     = 0
-    protocol    = -1
-    cidr_blocks = ["0.0.0.0/0"]
-  }
-
   tags = {
     Name = "${var.module_prefix}-database_sg"
   }
+}
+
+# Separate security group rules to avoid circular dependency
+resource "aws_security_group_rule" "app_to_db_egress" {
+  type                     = "egress"
+  from_port                = 3306
+  to_port                  = 3306
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.db_sg.id
+  security_group_id        = aws_security_group.app_sg.id
+  description              = "Enable outbound comm with MySQL DB"
+}
+
+resource "aws_security_group_rule" "db_from_app_ingress" {
+  type                     = "ingress"
+  from_port                = 3306
+  to_port                  = 3306
+  protocol                 = "tcp"
+  source_security_group_id = aws_security_group.app_sg.id
+  security_group_id        = aws_security_group.db_sg.id
+  description              = "MySQL access from app tier"
+}
+
+resource "aws_security_group_rule" "db_egress_all" {
+  type              = "egress"
+  from_port         = 0
+  to_port           = 0
+  protocol          = "-1"
+  cidr_blocks       = ["0.0.0.0/0"]
+  security_group_id = aws_security_group.db_sg.id
+  description       = "Allow all outbound traffic"
 }
 
 # See:

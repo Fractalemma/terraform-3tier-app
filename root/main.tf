@@ -24,8 +24,6 @@ module "security-group" {
   source                     = "../modules/security-group"
   module_prefix              = var.project_name
   vpc_id                     = module.network.vpc_id
-  internal_alb_ingress_cidrs = [var.pub_sub_a_cidr, var.pub_sub_b_cidr]
-  app_sg_egress_cidrs        = [var.pri_sub_data_a_cidr, var.pri_sub_data_b_cidr]
 }
 
 
